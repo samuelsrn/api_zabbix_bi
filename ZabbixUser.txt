@@ -1,0 +1,34 @@
+let
+    token = ZabbixToken,
+    
+    // incluir dentro de ""params"":{ } o parametro que deseja consultar
+    // Caso deixe vazio, o retorno será todos os ICs cadastrados em seu Zabbix
+
+    Body =
+    "{
+        ""jsonrpc"": ""2.0"",
+        ""method"": ""host.get"",
+        ""params"": {
+        },
+        ""auth"": """ & token & """,
+        ""id"": 1
+    }",
+    Source = Json.Document(
+        Web.Contents(
+            ZabbixURL,
+            [
+                Headers=[
+                    #"Content-Type"="application/json"
+                ],
+                Content = Text.ToBinary(Body)
+            ]
+        )
+    ),
+    result = Source[result],
+    #"Converted to Table" = if List.Count(result) > 0 
+                            then Table.FromList(result, Splitter.SplitByNothing(), null, null, ExtraValues.Error) 
+                            else Table.FromRows({}, {"hostid", "host", "status"}),
+    
+    #"Expanded Columns" = Table.ExpandRecordColumn(#"Converted to Table", "Column1", {"hostid", "host", "status", "name"})
+in
+    #"Expanded Columns"
